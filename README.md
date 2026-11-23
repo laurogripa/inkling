@@ -16,11 +16,9 @@ Session `01a209c7-2ad3` — «BIKE: Create pelican-riding-bike HTML».
 |---|---|
 | Model | `local/inkling` — Inkling 2 Mini v1.1.75 |
 | Turns | 59 |
-| Wall span | 18.0 min |
-| Model time | 748.6 s (12.5 min, ~30% of wall) |
+| Model time | 748.6 s (12.5 min) |
 | Output tokens | 79,984 |
 | Rate (model time only) | 106.8 tok/s |
-| Rate (wall clock) | 74.2 tok/s |
 
 ## Specs
 
