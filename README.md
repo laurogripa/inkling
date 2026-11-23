@@ -14,7 +14,8 @@ Session `01a209c7-2ad3` — «BIKE: Create pelican-riding-bike HTML».
 
 | | |
 |---|---|
-| Model | `local/inkling` — Inkling 2 Mini v1.1.75 |
+| Model | `local/inkling` — Inkling 2 Mini |
+| Config | [mw00/project-maya](https://github.com/mw00/project-maya/releases/tag/v1.1.75) v1.1.75 |
 | Turns | 59 |
 | Model time | 748.6 s (12.5 min) |
 | Output tokens | 79,984 |
@@ -22,7 +23,7 @@ Session `01a209c7-2ad3` — «BIKE: Create pelican-riding-bike HTML».
 
 ## Specs
 
-Box it ran on: MiniPC.
+Box it ran on: MiniPC. Usage measured live (`nvidia-smi`, `free`).
 
 | | |
 |---|---|
@@ -30,7 +31,8 @@ Box it ran on: MiniPC.
 | CPU | Intel Core Ultra 9 185H · 16 cores · 5.1 GHz max |
 | Motherboard | AZW GTi14 |
 | OS | Ubuntu 24.04.4 LTS (noble) |
-| RAM | 93 GiB · 8 GiB swap |
+| VRAM | 23.6 GiB used of 24 GiB |
+| RAM | 14 GiB used of 93 GiB |
 
 ## Files
 

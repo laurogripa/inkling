@@ -72,6 +72,8 @@
   .panel tr:last-child th, .panel tr:last-child td { border-bottom: 0; }
   .panel th { color: #64748b; font-weight: 600; width: 44%; padding-right: 10px; white-space: nowrap; }
   .panel td { color: #1f2937; font-variant-numeric: tabular-nums; line-height: 1.45; }
+  .panel a { color: #2563eb; text-decoration: none; border-bottom: 1px solid #c7d7fe; }
+  .panel a:hover { border-bottom-color: #2563eb; }
   @media (max-width: 980px) {
     .layout { grid-template-columns: 1fr; }
   }
@@ -292,11 +294,13 @@
     <h2>Run specs</h2>
     <table>
       <tr><th>Model</th><td>local/inkling<br>Inkling 2 Mini v1.1.75</td></tr>
+      <tr><th>Config</th><td><a href="https://github.com/mw00/project-maya/releases/tag/v1.1.75" target="_blank" rel="noopener">mw00/project-maya</a></td></tr>
       <tr><th>GPU</th><td>NVIDIA GeForce RTX 3090<br>24,576 MiB · driver 580.178.04</td></tr>
+      <tr><th>VRAM</th><td>23.6 GiB used (99%)</td></tr>
       <tr><th>CPU</th><td>Intel Core Ultra 9 185H<br>16 cores · 5.1 GHz max</td></tr>
       <tr><th>Motherboard</th><td>AZW GTi14</td></tr>
       <tr><th>OS</th><td>Ubuntu 24.04.4 LTS (noble)</td></tr>
-      <tr><th>RAM</th><td>93 GiB · 8 GiB swap</td></tr>
+      <tr><th>RAM</th><td>14 GiB used of 93 GiB</td></tr>
     </table>
     <h2>Output</h2>
     <table>
