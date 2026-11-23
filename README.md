@@ -14,7 +14,7 @@ Session `01a209c7-2ad3` — «BIKE: Create pelican-riding-bike HTML».
 
 | | |
 |---|---|
-| Model | `local/inkling` — Inkling 2 Mini |
+| Model | Inkling 2 Mini · UD-Q4_K_XL |
 | Config | [mw00/project-maya](https://github.com/mw00/project-maya/releases/tag/v1.1.75) v1.1.75 |
 | Turns | 59 |
 | Model time | 748.6 s (12.5 min) |
