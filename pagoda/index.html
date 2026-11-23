@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagoda</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #dfeeff 0%, #f4fafd 100%);
+    color: #1f2937;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  main { width: 100%; max-width: 1240px; }
+  h1 {
+    margin: 0 0 6px;
+    font-size: clamp(2rem, 5.5vw, 3.1rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .sub {
+    margin: 0 0 22px;
+    color: #475569;
+    font-size: clamp(1rem, 2.2vw, 1.2rem);
+  }
+  .card {
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 16px;
+    box-shadow: 0 18px 45px -18px rgba(15, 23, 42, 0.35), 0 2px 8px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+  }
+  canvas#scene { display: block; width: 100%; height: auto; border-radius: 14px; background: #eaf6fb; }
+  footer {
+    margin-top: 16px;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.82rem;
+  }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+  .panel {
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 18px 20px 20px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 18px 45px -18px rgba(15, 23, 42, 0.30), 0 2px 8px rgba(15, 23, 42, 0.08);
+  }
+  .panel h2:not(:first-child) { margin-top: 22px; }
+  .panel h2 {
+    margin: 0 0 8px;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+  }
+  .panel table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .panel tr th, .panel tr td {
+    text-align: left;
+    padding: 6px 0;
+    border-bottom: 1px solid #eef2f6;
+    vertical-align: top;
+  }
+  .panel tr:last-child th, .panel tr:last-child td { border-bottom: 0; }
+  .panel th { color: #64748b; font-weight: 600; width: 44%; padding-right: 10px; white-space: nowrap; }
+  .panel td { color: #1f2937; font-variant-numeric: tabular-nums; line-height: 1.45; }
+  .panel a { color: #2563eb; text-decoration: none; border-bottom: 1px solid #c7d7fe; }
+  .panel a:hover { border-bottom-color: #2563eb; }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    canvas#scene { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pagoda</h1>
+  <p class="sub">A five-tier voxel pagoda in a cherry-blossom garden — one long, quiet morning.</p>
+  <div class="layout">
+  <div class="card">
+    <canvas id="scene" width="1100" height="1000" role="img"
+            aria-label="A voxel art scene: a five-tier pagoda with up-turned eaves and a golden spire, in a garden with cherry blossom trees, leafy trees, a pond, a stone path, flowers and bushes — rendered in isometric orthographic view"></canvas>
+  </div>
+  <aside class="panel" aria-label="Run specs and output">
+    <h2>Run specs</h2>
+    <table>
+      <tr><th>Model</th><td>Inkling 2 Mini 262K · local/inkling</td></tr>
+      <tr><th>Server</th><td>maya-ik2 · looped MoE + DSpark drafter</td></tr>
+      <tr><th>Effort</th><td>high</td></tr>
+    </table>
+    <h2>Output</h2>
+    <table>
+      <tr><th>Turns</th><td>80</td></tr>
+      <tr><th>Model time</th><td>1395.4 s (23.2 min)</td></tr>
+      <tr><th>Output tokens</th><td>120,163</td></tr>
+      <tr><th>Model-only rate</th><td>86.1 tok/s</td></tr>
+    </table>
+  </aside>
+  </div>
+  <footer>Fixed orthographic camera · 45° yaw · 35.264° elevation · tiny inline renderer, no libraries</footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- projection (orthographic, yaw 45, elevation atan(1/sqrt(2))) ----------
+  const EL = Math.atan(1 / Math.sqrt(2)); // ~35.264°
+  const AZ = Math.PI / 4;                  // 45°
+  const camDir = [Math.sin(AZ) * Math.cos(EL), Math.sin(EL), Math.cos(AZ) * Math.cos(EL)]; // target -> camera
+  const fwd = [-camDir[0], -camDir[1], -camDir[2]];
+  const right = normalize(cross(fwd, [0, 1, 0]));
+  const up = normalize(cross(right, fwd));
+  function cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function normalize(v) { const n = Math.hypot(v[0], v[1], v[2]); return [v[0]/n, v[1]/n, v[2]/n]; }
+  function dot(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+
+  // ---------- color helpers ----------
+  const clamp255 = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  function mul(c, f) { return `rgb(${clamp255(c[0]*f)},${clamp255(c[1]*f)},${clamp255(c[2]*f)})`; }
+  function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n>>16)&255, (n>>8)&255, n&255]; }
+
+  function hash(x, y, z) {
+    let h = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
+    h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
+    return ((h ^ (h >>> 15)) >>> 0) / 4294967295;
+  }
+  function jitter(c, x, y, z, amount) {
+    const f = 1 + (hash(x, y, z) - 0.5) * 2 * amount;
+    return [c[0]*f, c[1]*f, c[2]*f];
+  }
+
+  // ---------- palette ----------
+  const P = {
+    stone:    rgb("#9a948a"),
+    dirt:     rgb("#7d5a44"),
+    grass:    rgb("#5fae54"),
+    dais:     rgb("#cfc8bb"),
+    path:     rgb("#d9d2c4"),
+    cream:    rgb("#f0e0b4"),
+    door:     rgb("#5a3524"),
+    window:   rgb("#31517a"),
+    roof:     rgb("#b84a30"),
+    corner:   rgb("#8e3423"),
+    gold:     rgb("#efb63b"),
+    goldLight: rgb("#ffd97a"),
+    trunk:    rgb("#6e4529"),
+    leaf:     rgb("#4da24c"),
+    leafLight: rgb("#72c261"),
+    blossom:  rgb("#f497c0"),
+    blossomLight: rgb("#ffc2da"),
+    blossomDeep: rgb("#e0709e"),
+    pond:     rgb("#4fa3d8"),
+    sand:     rgb("#e7d6a8"),
+    rock:     rgb("#a49d92"),
+    light:    rgb("#ffcf6e"),
+    lantern:  rgb("#7d756c"),
+    lanternCap: rgb("#b8b0a4"),
+    flower:   [rgb("#ffd84d"), rgb("#ff8a3d"), rgb("#ff6b81"), rgb("#ffffff"), rgb("#c77dff"), rgb("#7ee081")],
+  };
+
+  // ---------- voxel set ----------
+  const voxels = new Map();
+  const key = (x, y, z) => x + "," + y + "," + z;
+  function v(x, y, z, c) { voxels.set(key(x, y, z), { c }); }
+
+  const N = 22;               // island cells (x, z in [0,21])
+  const CX = 11, CZ = 8;      // pagoda centre (odd cell)
+
+  // --- island: stone base / dirt / grass, 2x2 corners cut off ---
+  for (let x = 0; x < N; x++) {
+    for (let z = 0; z < N; z++) {
+      const corner = (x <= 1 && z <= 1) || (x >= 20 && z <= 1) || (x <= 1 && z >= 20) || (x >= 20 && z >= 20);
+      if (corner) continue;
+      v(x, 0, z, jitter(P.stone, x, 0, z, 0.06));
+      v(x, 1, z, jitter(P.dirt, x, 1, z, 0.08));
+      v(x, 2, z, jitter(P.grass, x, 2, z, 0.08));
+    }
+  }
+
+  // --- sand rim + pond (x 2..5, z 12..15), back of the left side ---
+  const pondX0 = 2, pondX1 = 5, pondZ0 = 12, pondZ1 = 15;
+  for (let x = pondX0 - 1; x <= pondX1 + 1; x++) {
+    for (let z = pondZ0 - 1; z <= pondZ1 + 1; z++) {
+      const inPond = x >= pondX0 && x <= pondX1 && z >= pondZ0 && z <= pondZ1;
+      v(x, 2, z, inPond ? jitter(P.pond, x, 2, z, 0.10) : jitter(P.sand, x, 2, z, 0.07));
+    }
+  }
+  const pondCells = [];
+  for (let x = pondX0; x <= pondX1; x++) for (let z = pondZ0; z <= pondZ1; z++) pondCells.push([x, z]);
+
+  // --- pagoda dais: side 11, y=3 ---
+  const DAIS_X0 = CX - 5, DAIS_Z0 = CZ - 5; // 6..16, 3..13
+  for (let x = DAIS_X0; x <= DAIS_X0 + 10; x++)
+    for (let z = DAIS_Z0; z <= DAIS_Z0 + 10; z++)
+      v(x, 3, z, jitter(P.dais, x, 3, z, 0.05));
+
+  // --- pagoda tiers ---
+  const tiers = [
+    { side: 8, h: 4 },
+    { side: 6, h: 4 },
+    { side: 5, h: 3 },
+    { side: 4, h: 3 },
+    { side: 3, h: 2 },
+  ];
+  let py = 4;
+  for (let i = 0; i < tiers.length; i++) {
+    const t = tiers[i];
+    const x0 = Math.floor(CX - t.side / 2), z0 = Math.floor(CZ - t.side / 2);
+    const x1 = x0 + t.side - 1, z1 = z0 + t.side - 1;
+    // body
+    for (let x = x0; x <= x1; x++)
+      for (let z = z0; z <= z1; z++)
+        for (let y = py; y < py + t.h; y++)
+          v(x, y, z, jitter(P.cream, x, y, z, 0.05));
+    // windows
+    const midY = py + Math.floor(t.h / 2);
+    v(x1, midY, CZ, P.window);
+    v(CX, midY, z1, P.window);
+    // door on the bottom tier's +x face
+    if (i === 0) {
+      v(x1, py, CZ - 1, P.door);
+      v(x1, py, CZ, P.door);
+      v(x1, py + 1, CZ - 1, P.door);
+      v(x1, py + 1, CZ, P.door);
+      v(x1, py + 2, CZ - 1, P.gold);
+      v(x1, py + 2, CZ, P.gold);
+    }
+    // roof: wide slab with up-turned corner lips
+    const roofY = py + t.h;
+    const wide = t.side + 3;
+    const wx0 = Math.floor(CX - wide / 2), wz0 = Math.floor(CZ - wide / 2);
+    for (let x = wx0; x < wx0 + wide; x++)
+      for (let z = wz0; z < wz0 + wide; z++)
+        v(x, roofY, z, jitter(P.roof, x, roofY, z, 0.06));
+    const corners = [[wx0, wz0], [wx0 + wide - 1, wz0], [wx0, wz0 + wide - 1], [wx0 + wide - 1, wz0 + wide - 1]];
+    for (const [cx, cz] of corners)
+      v(cx, roofY + 1, cz, jitter(P.corner, cx, roofY + 1, cz, 0.05));
+    py = roofY + 2;
+  }
+  // spire: golden column + cap + finial tip
+  const spireY = py;
+  for (let y = spireY; y < spireY + 3; y++) v(CX, y, CZ, jitter(P.gold, CX, y, CZ, 0.10));
+  v(CX - 1, spireY + 3, CZ - 1, P.gold);
+  v(CX + 0, spireY + 3, CZ - 1, jitter(P.goldLight, CX, spireY + 3, CZ - 1, 0.08));
+  v(CX - 1, spireY + 3, CZ + 0, jitter(P.goldLight, CX - 1, spireY + 3, CZ, 0.08));
+  v(CX + 0, spireY + 3, CZ + 0, P.gold);
+  v(CX, spireY + 4, CZ, jitter(P.goldLight, CX, spireY + 4, CZ, 0.08));
+
+  // --- stone path (from dais +x edge to the island edge) ---
+  for (let x = DAIS_X0 + 11; x <= 20; x++) v(x, 3, CZ, jitter(P.path, x, 3, CZ, 0.10));
+
+  // --- stone lantern beside the path ---
+  const LX = 18, LZ = 6;
+  v(LX, 3, LZ, jitter(P.lantern, LX, 3, LZ, 0.06));
+  v(LX, 4, LZ, jitter(P.lantern, LX, 4, LZ, 0.06));
+  v(LX, 5, LZ, jitter(P.lanternCap, LX, 5, LZ, 0.06));
+  v(LX, 6, LZ, P.light);
+
+  // --- trees ---
+  const treeSpots = [
+    { x: 17, z: 3,  kind: "leaf" },
+    { x: 3,  z: 2,  kind: "leaf" },
+    { x: 2,  z: 6,  kind: "leaf" },
+    { x: 3,  z: 17, kind: "cherry" },
+    { x: 17, z: 15, kind: "cherry" },
+  ];
+  const petalTrees = [];
+  for (const t of treeSpots) {
+    for (let y = 3; y <= 4; y++) v(t.x, y, t.z, jitter(P.trunk, t.x, y, t.z, 0.10));
+    const base = t.kind === "cherry" ? P.blossom : P.leaf;
+    const mid = t.kind === "cherry" ? P.blossomLight : P.leafLight;
+    const deep = t.kind === "cherry" ? P.blossomDeep : P.leaf;
+    for (const L of [
+      { y: 5, size: 3, minus: false },
+      { y: 6, size: 5, minus: true },
+      { y: 7, size: 3, minus: false },
+      { y: 8, size: 1, minus: false },
+    ]) {
+      const half = (L.size - 1) / 2;
+      for (let dx = -half; dx <= half; dx++)
+        for (let dz = -half; dz <= half; dz++) {
+          const ddx = Math.round(dx), ddz = Math.round(dz);
+          if (L.minus && Math.abs(ddx) === half && Math.abs(ddz) === half) continue;
+          const x = t.x + ddx, z = t.z + ddz;
+          const j = hash(x, L.y, z);
+          const c = L.y === 5 ? (j < 0.32 ? deep : base) : (L.y >= 7 ? mid : (j < 0.22 ? mid : base));
+          v(x, L.y, z, jitter(c, x, L.y, z, 0.12));
+        }
+    }
+    if (t.kind === "cherry") {
+      petalTrees.push(t);
+      // fallen petals under the tree
+      for (let k = 0; k < 4; k++) {
+        const x = t.x + Math.round(hash(t.x, 90 + k, t.z) * 4 - 2);
+        const z = t.z + Math.round(hash(t.x, 95 + k, t.z) * 4 - 2);
+        if (voxels.has(key(x, 2, z)) && !voxels.has(key(x, 3, z)) && !(x >= pondX0 - 1 && x <= pondX1 + 1 && z >= pondZ0 - 1 && z <= pondZ1 + 1))
+          v(x, 3, z, jitter(P.blossomLight, x, 3, z, 0.08));
+      }
+    }
+  }
+
+  // --- bushes ---
+  const bushes = [[5, 9], [16, 11], [4, 19]];
+  for (const [bx, bz] of bushes) {
+    for (let dx = 0; dx < 2; dx++) for (let dz = 0; dz < 2; dz++) {
+      const x = bx + dx, z = bz + dz;
+      v(x, 3, z, hash(x, 3, z) < 0.25 ? jitter(P.leafLight, x, 3, z, 0.10) : jitter(P.leaf, x, 3, z, 0.12));
+      if (hash(x, 4, z) < 0.5) v(x, 4, z, jitter(P.leaf, x, 4, z, 0.12));
+    }
+  }
+
+  // --- rocks ---
+  const rocks = [[2, 18], [19, 16]];
+  for (const [rx, rz] of rocks) v(rx, 3, rz, jitter(P.rock, rx, 3, rz, 0.10));
+
+  // --- flowers on grass (deterministic scatter) ---
+  for (let x = 0; x < N; x++) for (let z = 0; z < N; z++) {
+    if (!voxels.has(key(x, 2, z))) continue;                  // island grass only
+    if (voxels.has(key(x, 3, z))) continue;                   // skip feature cells (trees, dais, …)
+    if (x >= pondX0 - 1 && x <= pondX1 + 1 && z >= pondZ0 - 1 && z <= pondZ1 + 1) continue;
+    if (x >= DAIS_X0 && x <= DAIS_X0 + 10 && z >= DAIS_Z0 && z <= DAIS_Z0 + 10) continue;
+    if (hash(x, 7, z) < 0.16) {
+      const c = P.flower[Math.floor(hash(x, 8, z) * P.flower.length)];
+      v(x, 3, z, jitter(c, x, 3, z, 0.08));
+    }
+  }
+
+  // ---------- renderer ----------
+  const canvas = document.getElementById("scene");
+  const ctx = canvas.getContext("2d");
+  const staticCanvas = document.createElement("canvas");
+  const sctx = staticCanvas.getContext("2d");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let view = null;
+
+  function projectPoint(px, py, pz) {
+    return { sx: dot([px, py, pz], right), sy: dot([px, py, pz], up) };
+  }
+  function projectCenter(x, y, z) { return projectPoint(x + 0.5, y + 0.5, z + 0.5); }
+  function toScreen(p) { return [view.cx + p.sx * view.scale, view.cy - p.sy * view.scale]; }
+
+  function computeView() {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const k of voxels.keys()) {
+      const [x, y, z] = k.split(",").map(Number);
+      const p = projectCenter(x, y, z);
+      minX = Math.min(minX, p.sx); maxX = Math.max(maxX, p.sx);
+      minY = Math.min(minY, p.sy); maxY = Math.max(maxY, p.sy);
+    }
+    const vx = (Math.abs(right[0]) + Math.abs(right[2])) * 0.5;
+    const vy = Math.abs(up[0]) + Math.abs(up[2]) + Math.abs(up[1]);
+    minX -= vx; maxX += vx; minY -= vy; maxY += vy;
+    const w = canvas.width, h = canvas.height;
+    const padX = 14, padY = 16;
+    const scale = Math.min((w - padX * 2) / (maxX - minX), (h - padY * 2) / (maxY - minY));
+    const cx = (w - (maxX - minX) * scale) / 2 - minX * scale;
+    const cy = (h - (maxY - minY) * scale) / 2 + maxY * scale;
+    view = { scale, cx, cy };
+  }
+
+  function poly(c, pts, fill) {
+    c.beginPath();
+    pts.forEach(([sx, sy], i) => (i ? c.lineTo(sx, sy) : c.moveTo(sx, sy)));
+    c.closePath();
+    c.fillStyle = fill;
+    c.fill();
+  }
+
+  const TOP = 1.16, RIGHT = 0.9, LEFT = 0.72;
+
+  function drawVoxel(c, x, y, z, vox) {
+    const x1 = x + 1, y1 = y + 1, z1 = z + 1;
+    if (!voxels.has(key(x + 1, y, z))) {
+      const pts = [projectPoint(x1, y, z), projectPoint(x1, y1, z), projectPoint(x1, y1, z1), projectPoint(x1, y, z1)].map(toScreen);
+      poly(c, pts, mul(vox.c, RIGHT));
+    }
+    if (!voxels.has(key(x, y, z + 1))) {
+      const pts = [projectPoint(x, y, z1), projectPoint(x1, y, z1), projectPoint(x1, y1, z1), projectPoint(x, y1, z1)].map(toScreen);
+      poly(c, pts, mul(vox.c, LEFT));
+    }
+    if (!voxels.has(key(x, y + 1, z))) {
+      const pts = [projectPoint(x, y1, z), projectPoint(x1, y1, z), projectPoint(x1, y1, z1), projectPoint(x, y1, z1)].map(toScreen);
+      poly(c, pts, mul(vox.c, TOP));
+    }
+  }
+
+  function drawStatic() {
+    computeView();
+    const arr = [...voxels.entries()].map(([k, vox]) => {
+      const [x, y, z] = k.split(",").map(Number);
+      return { x, y, z, c: vox.c };
+    });
+    arr.sort((a, b) => (a.x + a.z) - (b.x + b.z) || a.y - b.y);
+
+    const w = staticCanvas.width = canvas.width;
+    const h = staticCanvas.height = canvas.height;
+    sctx.clearRect(0, 0, w, h);
+    const sky = sctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#b7dbf1");
+    sky.addColorStop(0.6, "#e2f1f9");
+    sky.addColorStop(1, "#f0f8f0");
+    sctx.fillStyle = sky;
+    sctx.fillRect(0, 0, w, h);
+    sctx.lineJoin = "round";
+
+    for (const vox of arr) drawVoxel(sctx, vox.x, vox.y, vox.z, vox);
+  }
+
+  function render() {
+    const w = canvas.clientWidth || 1000;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const h = Math.round(w * (1000 / 1100));
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.height = h + "px";
+      drawStatic();
+    }
+    ctx.drawImage(staticCanvas, 0, 0);
+    drawDynamic(performance.now() / 1000);
+  }
+
+  // ---------- animation: falling petals + pond sparkles ----------
+  const petals = [];
+  const PETAL_MAX = 70;
+  function spawnPetal() {
+    if (petals.length >= PETAL_MAX) return;
+    const tree = petalTrees[Math.floor(Math.random() * petalTrees.length)];
+    petals.push({
+      x: tree.x + (Math.random() * 2.4 - 1.2),
+      y: 7.6 + Math.random() * 0.6,
+      z: tree.z + (Math.random() * 2.4 - 1.2),
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.9 + Math.random() * 0.5,
+      life: 0,
+    });
+  }
+
+  function drawDynamic(t) {
+    for (let i = 0; i < pondCells.length; i++) {
+      if (i % 3 !== 0) continue;
+      const [px, pz] = pondCells[i];
+      const a = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 1.7);
+      const p = toScreen(projectPoint(px + 0.5, 2.62, pz + 0.5));
+      ctx.save();
+      ctx.globalAlpha = 0.2 + 0.5 * a;
+      ctx.fillStyle = "#ffffff";
+      ctx.translate(p[0], p[1]);
+      const s = 3.2 * (0.7 + 0.3 * a);
+      ctx.beginPath();
+      ctx.moveTo(0, -s); ctx.lineTo(s * 0.8, 0); ctx.lineTo(0, s); ctx.lineTo(-s * 0.8, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    for (let i = petals.length - 1; i >= 0; i--) {
+      const p = petals[i];
+      p.life += 1 / 60;
+      p.y -= p.speed / 60;
+      p.x += Math.sin(p.life * 2.1 + p.phase) * 0.02;
+      p.z += Math.cos(p.life * 1.7 + p.phase) * 0.02;
+      if (p.y < 3.05) {
+        p.fade = (p.fade ?? 1) - 1 / 70;
+        if (p.fade <= 0) { petals.splice(i, 1); continue; }
+      }
+      const pos = toScreen(projectPoint(p.x + 0.5, p.y + 0.5, p.z + 0.5));
+      const alpha = (p.fade !== undefined ? Math.max(0, p.fade) : 1) * 0.9;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "#f9a8c9";
+      ctx.translate(pos[0], pos[1]);
+      ctx.rotate(p.phase + t * 0.9);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 4.6, 2.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (Math.random() < 0.05 && !reduced) spawnPetal();
+  }
+
+  let lastSpawn = 0;
+  function loop(now) {
+    const t = now / 1000;
+    if (t - lastSpawn > 0.14) { spawnPetal(); lastSpawn = t; }
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  function fit() {
+    drawStatic();
+    render();
+  }
+
+  window.addEventListener("resize", fit);
+
+  if (reduced) {
+    fit();
+  } else {
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>

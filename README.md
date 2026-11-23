@@ -7,7 +7,7 @@ Experiments in one shell. Each lives in its own folder, linked from the root lan
 | | |
 |---|---|
 | [pelican-bike](pelican-bike/) | Animated SVG pelican on a bike |
-| pagoda | Coming next |
+| [pagoda](pagoda/) | Voxel art pagoda in a garden |
 
 ## pelican-bike
 
@@ -32,6 +32,20 @@ Specs — MiniPC, usage measured live (`nvidia-smi`, `free`):
 | Motherboard | AZW GTi14 |
 | OS | Ubuntu 24.04.4 LTS (noble) |
 | RAM | 14 GiB used of 93 GiB |
+
+## pagoda
+
+Session `01a20a0a-6977-725c-8cd1-e8a771976986` — «Pagoda: voxel art scene».
+
+| | |
+|---|---|
+| Model | Inkling 2 Mini 262K · local/inkling |
+| Server | maya-ik2 · looped MoE + DSpark drafter |
+| Effort | high |
+| Turns | 80 |
+| Model time | 1395.4 s (23.2 min) |
+| Output tokens | 120,163 |
+| Rate (model time only) | 86.1 tok/s |
 
 ## Next
 
